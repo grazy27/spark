@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using Microsoft.Spark.Interop;
 using Microsoft.Spark.Interop.Ipc;
 using Microsoft.Spark.Network;
 using Microsoft.Spark.Services;
+using Microsoft.Spark.Utils;
 
 namespace Microsoft.Spark
 {
@@ -83,7 +83,7 @@ namespace Microsoft.Spark
         /// Serialization callback function that adds to the JvmBroadcastRegistry when the
         /// Broadcast variable object is being serialized.
         /// </summary>
-        /// <param name="context">The current StreaminContext being used</param>
+        /// <param name="context">The current StreamingContext being used</param>
         [OnSerialized]
         internal void OnSerialized(StreamingContext context)
         {
@@ -221,11 +221,8 @@ namespace Microsoft.Spark
         /// </summary>
         /// <param name="value">Serializable object</param>
         /// <param name="stream">Stream to which the object is serialized</param>
-        private void Dump(object value, Stream stream)
-        {
-            var formatter = new BinaryFormatter();
-            formatter.Serialize(stream, value);
-        }
+        private void Dump(object value, Stream stream) =>
+            BinarySerDe.Serialize(stream, value);
     }
 
     /// <summary>

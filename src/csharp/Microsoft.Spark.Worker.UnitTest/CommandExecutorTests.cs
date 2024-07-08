@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow;
@@ -1049,8 +1048,8 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             using var inputStream = new MemoryStream();
             using var outputStream = new MemoryStream();
+
             // Write test data to the input stream.
-            var formatter = new BinaryFormatter();
             var memoryStream = new MemoryStream();
 
             var inputs = new int[] { 0, 1, 2, 3, 4 };
@@ -1059,10 +1058,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             foreach (int input in inputs)
             {
                 memoryStream.Position = 0;
-#pragma warning disable SYSLIB0011 // Type or member is obsolete
-                // TODO: Replace BinaryFormatter with a new, secure serializer.
-                formatter.Serialize(memoryStream, input);
-#pragma warning restore SYSLIB0011 // Type or member is obsolete
+                BinarySerDe.Serialize(memoryStream, input);
                 values.Add(memoryStream.ToArray());
             }
 
