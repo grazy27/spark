@@ -41,7 +41,7 @@ namespace Microsoft.Spark.E2ETest
 
         private readonly Process _process = new Process();
         private readonly TemporaryDirectory _tempDirectory = new TemporaryDirectory();
-        
+
         public const string DefaultLogLevel = "ERROR";
 
         internal SparkSession Spark { get; }
@@ -76,7 +76,7 @@ namespace Microsoft.Spark.E2ETest
             {
                 // Scala-side driver for .NET emits the following message after it is
                 // launched and ready to accept connections.
-                if (!isSparkReady &&
+                if (!isSparkReady && arguments.Data != null &&
                     arguments.Data.Contains("Backend running debug mode"))
                 {
                     isSparkReady = true;
@@ -110,7 +110,7 @@ namespace Microsoft.Spark.E2ETest
                 .Config("spark.ui.showConsoleProgress", false)
                 .AppName("Microsoft.Spark.E2ETest")
                 .GetOrCreate();
-                
+
             Spark.SparkContext.SetLogLevel(DefaultLogLevel);
 
             Jvm = Spark.Reference.Jvm;
@@ -209,11 +209,15 @@ namespace Microsoft.Spark.E2ETest
             // The solution is to use custom log configuration that appends NullLogger, which
             // works across all Spark versions.
             string resourceUri = new Uri(TestEnvironment.ResourceDirectory).AbsoluteUri;
-            string logOption = "--conf spark.driver.extraJavaOptions=-Dlog4j.configuration=" +
-                $"{resourceUri}/log4j.properties";
+            var log4jConfiguration = "-Dlog4j.configuration={resourceUri}/log4j.properties";
+            var allowRemoteDebugging = ""; // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
 
-            args = $"{logOption} {warehouseDir} {AddPackages(extraArgs)} {repositories} {classArg} " +
-                $"--master local {jar} debug";
+            string javaDriverOptions = $"--conf \"spark.driver.extraJavaOptions={log4jConfiguration} {allowRemoteDebugging}\"";
+
+            // use "--driver-memory 8g " to set RAM, 1g is default 
+
+            args = $"{javaDriverOptions} {warehouseDir} {AddPackages(extraArgs)} {repositories} {classArg} " +
+                @$"--master local ""{jar}"" debug";
         }
 
         private string GetJarPrefix()

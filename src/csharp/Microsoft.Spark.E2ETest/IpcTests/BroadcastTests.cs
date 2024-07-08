@@ -10,12 +10,13 @@ namespace Microsoft.Spark.E2ETest.IpcTests
     public class TestBroadcastVariable
     {
         public int IntValue { get; private set; }
+
         public string StringValue { get; private set; }
 
-        public TestBroadcastVariable(int intVal, string stringVal)
+        public TestBroadcastVariable(int intValue, string stringValue)
         {
-            IntValue = intVal;
-            StringValue = stringVal;
+            IntValue = intValue;
+            StringValue = stringValue;
         }
     }
 

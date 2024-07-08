@@ -25,7 +25,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             PayloadWriter payloadWriter = new PayloadWriterFactory().Create();
             var taskRunner = new TaskRunner(0, clientSocket, false, payloadWriter.Version);
-            Task clientTask = Task.Run(() => taskRunner.Run());
+            Task clientTask = Task.Run(taskRunner.Run);
 
             using (ISocketWrapper serverSocket = serverListener.Accept())
             {

@@ -673,7 +673,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             var arrowReader = new ArrowStreamReader(outputStream);
             RecordBatch outputBatch = arrowReader.ReadNextRecordBatch();
 
-            Assert.Equal(1, outputBatch.Schema.Fields.Count);
+            Assert.Equal(1, outputBatch.Schema.FieldsList.Count);
             Assert.IsType<StringType>(outputBatch.Schema.GetFieldByIndex(0).DataType);
 
             Assert.Equal(0, outputBatch.Length);
@@ -758,7 +758,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             var arrowReader = new ArrowStreamReader(outputStream);
             RecordBatch outputBatch = arrowReader.ReadNextRecordBatch();
 
-            Assert.Equal(1, outputBatch.Schema.Fields.Count);
+            Assert.Equal(1, outputBatch.Schema.FieldsList.Count);
             Assert.IsType<StringType>(outputBatch.Schema.GetFieldByIndex(0).DataType);
 
             Assert.Equal(0, outputBatch.Length);
@@ -1088,12 +1088,9 @@ namespace Microsoft.Spark.Worker.UnitTest
             for (int i = 0; i < inputs.Length; ++i)
             {
                 Assert.True(SerDe.ReadInt32(outputStream) > 0);
-#pragma warning disable SYSLIB0011 // Type or member is obsolete
-                // TODO: Replace BinaryFormatter with a new, secure serializer.
                 Assert.Equal(
                     mapUdf(i),
-                    formatter.Deserialize(outputStream));
-#pragma warning restore SYSLIB0011 // Type or member is obsolete
+                    BinarySerDe.Deserialize<object>(outputStream));
             }
 
             // Validate all the data on the stream is read.

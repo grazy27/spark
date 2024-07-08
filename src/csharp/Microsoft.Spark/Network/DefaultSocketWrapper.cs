@@ -72,7 +72,7 @@ namespace Microsoft.Spark.Network
         /// <param name="secret">Secret string to use for connection</param>
         public void Connect(IPAddress remoteaddr, int port, string secret)
         {
-            _innerSocket.Connect(new IPEndPoint(remoteaddr, port));
+            _innerSocket.Connect(remoteaddr, port);
 
             if (!string.IsNullOrWhiteSpace(secret))
             {
