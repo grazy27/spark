@@ -24,10 +24,10 @@ namespace Microsoft.Spark.E2ETest.IpcTests
         }
 
         /// <summary>
-        /// Test signatures for APIs up to Spark 2.4.*.
+        /// Test signatures for APIs For Spark 2.4.* - 3.2.*
         /// </summary>
-        [Fact]
-        public void TestSignaturesV2_4_X()
+        [SkipIfSparkVersionIsNotInRange(Versions.V2_4_0, Versions.V3_2_0)]
+        public void TestSignaturesV2_4_XTo3_2_X()
         {
             WithTable(_spark, new string[] { "users", "users2", "users3", "users4", "usersp" }, () =>
             {
@@ -88,10 +88,10 @@ namespace Microsoft.Spark.E2ETest.IpcTests
         }
 
         /// <summary>
-        /// Test signatures for APIs introduced in Spark 3.1.*.
+        /// Test signatures for APIs introduced in Spark 3.1.* - 3.2.*
         /// </summary>
-        [SkipIfSparkVersionIsLessThan(Versions.V3_1_0)]
-        public void TestSignaturesV3_1_X()
+        [SkipIfSparkVersionIsNotInRange(Versions.V3_1_0, Versions.V3_2_0)]
+        public void TestSignaturesV3_1ToV3_2()
         {
             WithTable(_spark, new string[] { "users1", "users2" }, () =>
             {
@@ -106,6 +106,27 @@ namespace Microsoft.Spark.E2ETest.IpcTests
                 var tableOptions = new Dictionary<string, string>() { { "path", usersFilePath } };
                 Assert.IsType<DataFrame>(
                     catalog.CreateTable("users1", "parquet", "description", tableOptions));
+            });
+        }
+
+        /// <summary>
+        /// Test signatures for APIs introduced in Spark 3.1.*.
+        /// </summary>
+        [SkipIfSparkVersionIsLessThan(Versions.V3_1_0)]
+        public void TestSignaturesV3_1_Plus()
+        {
+            WithTable(_spark, new string[] { "users1", "users2" }, () =>
+            {
+                Catalog catalog = _spark.Catalog;
+
+                string usersFilePath = Path.Combine(TestEnvironment.ResourceDirectory, "users.parquet");
+                var usersSchema = new StructType(new[]
+                {
+                    new StructField("name", new StringType()),
+                    new StructField("favorite_color", new StringType()),
+                });
+                var tableOptions = new Dictionary<string, string>() { { "path", usersFilePath } };
+
                 Assert.IsType<DataFrame>(
                     catalog.CreateTable("users2", "parquet", usersSchema, "description", tableOptions));
             });

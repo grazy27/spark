@@ -8,7 +8,7 @@
 
 .NET for Apache Spark is compliant with .NET Standard - a formal specification of .NET APIs that are common across .NET implementations. This means you can use .NET for Apache Spark anywhere you write .NET code allowing you to reuse all the knowledge, skills, code, and libraries you already have as a .NET developer. 
 
-.NET for Apache Spark runs on Windows, Linux, and macOS using .NET 6, or Windows using .NET Framework. It also runs on all major cloud providers including [Azure HDInsight Spark](deployment/README.md#azure-hdinsight-spark), [Amazon EMR Spark](deployment/README.md#amazon-emr-spark), [AWS](deployment/README.md#databricks) & [Azure](deployment/README.md#databricks) Databricks.
+.NET for Apache Spark runs on Windows, Linux, and macOS using .NET 8, or Windows using .NET Framework. It also runs on all major cloud providers including [Azure HDInsight Spark](deployment/README.md#azure-hdinsight-spark), [Amazon EMR Spark](deployment/README.md#amazon-emr-spark), [AWS](deployment/README.md#databricks) & [Azure](deployment/README.md#databricks) Databricks.
 
 **Note**: We currently have a Spark Project Improvement Proposal JIRA at [SPIP: .NET bindings for Apache Spark](https://issues.apache.org/jira/browse/SPARK-27006) to work with the community towards getting .NET support by default into Apache Spark. We highly encourage you to participate in the discussion. 
 
@@ -40,7 +40,7 @@
     <tbody align="center">
         <tr>
             <td>2.4*</td>
-            <td rowspan=4><a href="https://github.com/dotnet/spark/releases/tag/v2.1.1">v2.1.1</a></td>
+            <td rowspan=5><a href="https://github.com/dotnet/spark/releases/tag/v2.1.1">v2.1.1</a></td>
         </tr>
         <tr>
             <td>3.0</td>
@@ -50,6 +50,9 @@
         </tr>
         <tr>
             <td>3.2</td>
+        </tr>        
+        <tr>
+            <td>3.5</td>
         </tr>
     </tbody>
 </table>
@@ -61,7 +64,7 @@
 .NET for Apache Spark releases are available [here](https://github.com/dotnet/spark/releases) and NuGet packages are available [here](https://www.nuget.org/packages/Microsoft.Spark).
 
 ## Get Started
-These instructions will show you how to run a .NET for Apache Spark app using .NET 6.
+These instructions will show you how to run a .NET for Apache Spark app using .NET 8.
 - [Windows Instructions](docs/getting-started/windows-instructions.md)
 - [Ubuntu Instructions](docs/getting-started/ubuntu-instructions.md)
 - [MacOs Instructions](docs/getting-started/macos-instructions.md)

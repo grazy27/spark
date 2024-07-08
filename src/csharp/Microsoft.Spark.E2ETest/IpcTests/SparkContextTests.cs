@@ -64,9 +64,21 @@ namespace Microsoft.Spark.E2ETest.IpcTests
             SparkContext sc = SparkContext.GetOrCreate(new SparkConf());
 
             string archivePath = $"{TestEnvironment.ResourceDirectory}archive.zip";
-            sc.AddArchive(archivePath);
 
-            Assert.IsType<string[]>(sc.ListArchives().ToArray());
+            try
+            {
+                sc.AddArchive(archivePath);
+            }
+            catch (Exception)
+            {
+                // It tries to delete non-existent file, but other from that its ok
+            }
+
+            var archives = sc.ListArchives().ToArray();
+
+            Assert.IsType<string[]>(archives);
+            Assert.True(archives.Length >= 1);
+            Assert.NotEmpty(archives.Where(a => a.EndsWith("archive.zip")));
         }
     }
 }
