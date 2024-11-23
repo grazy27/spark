@@ -225,7 +225,8 @@ object Utils extends Logging {
       throw new IllegalArgumentException(
         s"Unsupported spark version used: '$sparkVersion'. " +
           s"Normalized spark version used: '$normalizedSparkVersion'. " +
-          s"Supported versions: '$supportedVersions'.")
+          s"Supported versions: '$supportedVersions'." +
+          "Patch version can be ignored, use setting 'spark.dotnet.ignoreSparkPatchVersionCheck'"  )
     }
   }
 

@@ -16,9 +16,9 @@ class UtilsTest {
 
   @Test
   def shouldIgnorePatchVersion(): Unit = {
-    val sparkVersion = "3.5.1"
+    val sparkVersion = "3.5.300"
     val sparkMajorMinorVersionPrefix = "3.5"
-    val supportedSparkVersions = Set[String]("3.5.0")
+    val supportedSparkVersions = Set[String]("3.5.200")
 
     Utils.validateSparkVersions(
       true,
@@ -49,7 +49,9 @@ class UtilsTest {
     assertEquals(
       s"Unsupported spark version used: '$sparkVersion'. " +
         s"Normalized spark version used: '$normalizedSparkVersion'. " +
-        s"Supported versions: '${supportedSparkVersions.toSeq.sorted.mkString(", ")}'.",
+        s"Supported versions: '${supportedSparkVersions.toSeq.sorted.mkString(", ")}'." +
+        "Patch version can be ignored, use setting 'spark.dotnet.ignoreSparkPatchVersionCheck'",
+
       exception.getMessage)
   }
 
