@@ -253,6 +253,13 @@ namespace Microsoft.Spark.Utils
                         ref nodeIndex,
                         ref udfIndex);
             }
+            else if (nodeType == typeof(ArrowCoGroupedMapUdfWrapper))
+            {
+                udf = (ArrowCoGroupedMapWorkerFunction.ExecuteDelegate)DeserializeUdfs<ArrowCoGroupedMapWorkerFunction.ExecuteDelegate>(
+                      udfWrapperData,
+                      ref nodeIndex,
+                      ref udfIndex);
+            }
             else
             {
                 udf = (ArrowWorkerFunction.ExecuteDelegate)

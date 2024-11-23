@@ -90,6 +90,18 @@ namespace Microsoft.Spark.Interop.Ipc
         }
 
         /// <summary>
+        /// Reads an unsigned long integer from a stream.
+        /// </summary>
+        /// <param name="s">The stream to be read</param>
+        /// <returns>The long integer read from stream</returns>
+        public static ulong ReadUInt64(Stream s)
+        {
+            byte[] buffer = GetThreadLocalBuffer(sizeof(long));
+            TryReadBytes(s, buffer, sizeof(long));
+            return BinaryPrimitives.ReadUInt64BigEndian(buffer);
+        }
+
+        /// <summary>
         /// Reads a double from a stream.
         /// </summary>
         /// <param name="s">The stream to be read</param>
@@ -125,7 +137,8 @@ namespace Microsoft.Spark.Interop.Ipc
         /// <returns>The string read from stream</returns>
         public static string ReadString(Stream s, int length)
         {
-            if (length == (int)SpecialLengths.NULL)
+            if (length == (int)SpecialLengths.NULL
+                || length == (int)SpecialLengths.END_OF_DATA_SECTION)
             {
                 return null;
             }

@@ -17,6 +17,7 @@ using Microsoft.Spark.Sql;
 using Microsoft.Spark.Utils;
 using Razorvine.Pickle;
 using FxDataFrame = Microsoft.Data.Analysis.DataFrame;
+using PythonEvalType = Microsoft.Spark.Utils.UdfUtils.PythonEvalType;
 
 namespace Microsoft.Spark.Worker.Command
 {
@@ -40,7 +41,7 @@ namespace Microsoft.Spark.Worker.Command
             Version version,
             Stream inputStream,
             Stream outputStream,
-            UdfUtils.PythonEvalType evalType,
+            PythonEvalType evalType,
             SqlCommand[] commands)
         {
             if (commands.Length <= 0)
@@ -55,23 +56,19 @@ namespace Microsoft.Spark.Worker.Command
                 throw new ArgumentException("Unexpected serialization mode found.");
             }
 
-            SqlCommandExecutor executor;
-            if (evalType == UdfUtils.PythonEvalType.SQL_BATCHED_UDF)
+            SqlCommandExecutor executor = evalType switch
             {
-                executor = new PicklingSqlCommandExecutor();
-            }
-            else if (evalType == UdfUtils.PythonEvalType.SQL_SCALAR_PANDAS_UDF)
-            {
-                executor = new ArrowOrDataFrameSqlCommandExecutor(version);
-            }
-            else if (evalType == UdfUtils.PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF)
-            {
-                executor = new ArrowOrDataFrameGroupedMapCommandExecutor(version);
-            }
-            else
-            {
-                throw new NotSupportedException($"{evalType} is not supported.");
-            }
+                PythonEvalType.SQL_BATCHED_UDF =>
+                    new PicklingSqlCommandExecutor(),
+                PythonEvalType.SQL_SCALAR_PANDAS_UDF =>
+                    new ArrowOrDataFrameSqlCommandExecutor(version),
+                PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF =>
+                    new ArrowOrDataFrameGroupedMapCommandExecutor(version),
+                PythonEvalType.SQL_COGROUPED_MAP_PANDAS_UDF =>
+                    new ArrowOrDataFrameCoGroupedMapCommandExecutor(version),
+
+                _ => throw new NotSupportedException($"{evalType} is not supported.")
+            };
 
             return executor.ExecuteCore(inputStream, outputStream, commands);
         }
@@ -318,6 +315,7 @@ namespace Microsoft.Spark.Worker.Command
             using var reader = new ArrowStreamReader(inputStream, leaveOpen: true);
             RecordBatch batch;
             bool returnedResult = false;
+
             while ((batch = reader.ReadNextRecordBatch()) != null)
             {
                 yield return batch;
@@ -716,7 +714,14 @@ namespace Microsoft.Spark.Worker.Command
             {
                 if (command.WorkerFunction is DataFrameGroupedMapWorkerFunction groupedMapWorkerFunction)
                 {
-                    useDataFrameGroupedMapCommandExecutor = true;
+                    if (command.WorkerFunction is DataFrameGroupedMapWorkerFunction groupedMapWorkerFunction)
+                    {
+                        useDataFrameGroupedMapCommandExecutor = true;
+                    }
+                    else
+                    {
+                        useArrowGroupedMapCommandExecutor = true;
+                    }
                 }
                 else
                 {
@@ -837,6 +842,144 @@ namespace Microsoft.Spark.Worker.Command
             writer?.Dispose();
 
             return stat;
+        }
+
+        internal class ArrowOrDataFrameCoGroupedMapCommandExecutor : ArrowOrDataFrameSqlCommandExecutor
+        {
+            internal ArrowOrDataFrameCoGroupedMapCommandExecutor(Version version) : base(version)
+            {
+            }
+
+            protected internal override CommandExecutorStat ExecuteCore(
+              Stream inputStream,
+              Stream outputStream,
+              SqlCommand[] commands)
+            {
+                Debug.Assert(commands.Length == 1,
+                    "Grouped Map UDFs do not support combining multiple UDFs.");
+
+                bool useDataFrameGroupedMapCommandExecutor = false;
+                bool useArrowGroupedMapCommandExecutor = false;
+                foreach (SqlCommand command in commands)
+                {
+                    if (command.WorkerFunction is DataFrameGroupedMapWorkerFunction groupedMapWorkerFunction)
+                    {
+                        useDataFrameGroupedMapCommandExecutor = true;
+                    }
+                    else
+                    {
+                        useArrowGroupedMapCommandExecutor = true;
+                    }
+                }
+                if (useDataFrameGroupedMapCommandExecutor && useArrowGroupedMapCommandExecutor)
+                {
+                    // Mixed mode. Not supported
+                    throw new NotSupportedException("Combined Arrow and DataFrame style commands are not supported");
+                }
+
+                return ExecuteArrowCoGroupedMapCommand(inputStream, outputStream, commands);
+            }
+
+            private RecordBatch WrapColumnsInStructIfApplicable(RecordBatch batch)
+            {
+                if (_version >= new Version(Versions.V3_0_0))
+                {
+                    var fields = new Field[batch.Schema.FieldsList.Count];
+                    for (int i = 0; i < batch.Schema.FieldsList.Count; ++i)
+                    {
+                        fields[i] = batch.Schema.GetFieldByIndex(i);
+                    }
+
+                    var structType = new StructType(fields);
+                    var structArray = new StructArray(
+                        structType,
+                        batch.Length,
+                        batch.Arrays.Cast<Apache.Arrow.Array>(),
+                        ArrowBuffer.Empty);
+                    Schema schema = new Schema.Builder().Field(new Field("Struct", structType, false)).Build();
+                    return new RecordBatch(schema, new[] { structArray }, batch.Length);
+                }
+
+                return batch;
+            }
+
+            private CommandExecutorStat ExecuteArrowCoGroupedMapCommand(
+                Stream inputStream,
+                Stream outputStream,
+                SqlCommand[] commands)
+            {
+                Debug.Assert(commands.Length == 1,
+                    "Grouped Map UDFs do not support combining multiple UDFs.");
+
+                var stat = new CommandExecutorStat();
+                var worker = (ArrowCoGroupedMapWorkerFunction)commands[0].WorkerFunction;
+
+                IpcOptions ipcOptions = ArrowIpcOptions();
+                ArrowStreamWriter writer = null;
+
+                if (ConfigurationService.IsDatabricks)
+                {
+                    var unknownParameter = SerDe.ReadInt64(inputStream);
+                }
+
+                SerDe.Write(outputStream, (int)SpecialLengths.START_ARROW_STREAM);
+                foreach ((RecordBatch l, RecordBatch r) in GetCoGroupedInputIterator(inputStream))
+                {
+                    RecordBatch batch = worker.Func(l, r);
+
+
+
+                    RecordBatch final = WrapColumnsInStructIfApplicable(batch);
+                    int numEntries = final.Length;
+                    stat.NumEntriesProcessed += numEntries;
+
+                    if (writer == null)
+                    {
+                        writer =
+                            new ArrowStreamWriter(outputStream, final.Schema, leaveOpen: true, ipcOptions);
+                    }
+
+                    writer.WriteRecordBatch(final);
+                }
+
+                WriteEnd(outputStream, ipcOptions);
+                writer?.Dispose();
+
+                return stat;
+            }
+
+            protected IEnumerable<(RecordBatch l, RecordBatch r)> GetCoGroupedInputIterator(Stream inputStream)
+            {
+                using var reader = new ArrowStreamReader(inputStream, leaveOpen: true);
+                RecordBatch batch1, batch2;
+
+                var dataframesInGroup = -1;
+
+                while (dataframesInGroup == -1 || dataframesInGroup > 0)
+                {
+                    dataframesInGroup = SerDe.ReadInt32(inputStream);
+
+                    if (dataframesInGroup == 2)
+                    {
+                        batch1 = reader.ReadNextRecordBatch();
+
+                        // Always '0'
+                        var unknownParameter = SerDe.ReadUInt64(inputStream);
+
+                        batch2 = reader.ReadNextRecordBatch();
+
+                        // Always 0xFF 4 times 0x00 4 times 
+                        _ = SerDe.ReadUInt64(inputStream);
+
+                        yield return (batch1, batch2);
+                    }
+                    else if (dataframesInGroup != 0)
+                    {
+                        throw new Exception($"Invalid number of dataframes in group {dataframesInGroup}");
+                    }
+                }
+            }
+
         }
     }
 }

@@ -14,7 +14,10 @@ using FxDataFrame = Microsoft.Data.Analysis.DataFrame;
 namespace Microsoft.Spark.Sql
 {
     /// <summary>
-    /// A set of methods for aggregations on a DataFrame.
+    ///Represents a grouped DF, after applying 
+    /// <see cref=" Microsoft.Spark.Sql.DataFrame.GroupBy(Column[])"/>, 
+    /// <see cref=" Microsoft.Spark.Sql.DataFrame.Rollup(Column[])"/>, 
+    /// <see cref=" Microsoft.Spark.Sql.DataFrame.Cube(Column[])"/> 
     /// </summary>
     public sealed class RelationalGroupedDataset : IJvmObjectReferenceProvider
     {
@@ -214,6 +217,26 @@ namespace Microsoft.Spark.Sql
             return new DataFrame((JvmObjectReference)Reference.Invoke(
                 "flatMapGroupsInPandas",
                 udfColumn.Expr()));
+        }
+
+        /// <summary>
+        /// Combines two grouped datasets into a co-grouped dataset for joint processing.
+        /// 
+        /// This function enables operations on pairs of groups from two datasets where
+        /// the grouping key matches. The resulting dataset allows operations like joining
+        /// or applying transformations to the grouped pairs.
+        /// </summary>
+        /// <param name="second">
+        /// A <see cref="RelationalGroupedDataset"/> representing the second dataset to co-group with.
+        /// </param>
+        /// <returns>
+        /// A <see cref="CoGroupedDataset"/> representing the combined grouped datasets.
+        /// </returns>
+
+        [Since(Versions.V3_0_0)]
+        public CoGroupedDataset CoGroup(RelationalGroupedDataset second)
+        {
+            return new CoGroupedDataset(this, this._dataFrame, second);
         }
     }
 }

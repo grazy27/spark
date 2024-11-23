@@ -90,7 +90,8 @@ namespace Microsoft.Spark.Worker.Processor
         {
             if ((evalType != PythonEvalType.SQL_BATCHED_UDF) &&
                 (evalType != PythonEvalType.SQL_SCALAR_PANDAS_UDF) &&
-                (evalType != PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF))
+                (evalType != PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF) &&
+                (evalType != PythonEvalType.SQL_COGROUPED_MAP_PANDAS_UDF))
             {
                 throw new NotImplementedException($"{evalType} is not supported.");
             }
@@ -165,7 +166,8 @@ namespace Microsoft.Spark.Worker.Processor
                                 throw new NotSupportedException($"Unknown delegate type: {obj.GetType()}");
                             }
                         }
-                        else if (evalType == PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF)
+                        else if (evalType == PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF
+                            || evalType == PythonEvalType.SQL_COGROUPED_MAP_PANDAS_UDF)
                         {
                             if ((numUdfs != 1) || (command.WorkerFunction != null))
                             {
@@ -178,18 +180,18 @@ namespace Microsoft.Spark.Worker.Processor
                                 out serializerMode,
                                 out deserializerMode,
                                 out string runMode);
-                            if (obj is ArrowGroupedMapWorkerFunction.ExecuteDelegate arrowFunctionDelegate)
+
+                            command.WorkerFunction = obj switch
                             {
-                                command.WorkerFunction = new ArrowGroupedMapWorkerFunction(arrowFunctionDelegate);
-                            }
-                            else if (obj is DataFrameGroupedMapWorkerFunction.ExecuteDelegate dataFrameDelegate)
-                            {
-                                command.WorkerFunction = new DataFrameGroupedMapWorkerFunction(dataFrameDelegate);
-                            }
-                            else
-                            {
-                                throw new NotSupportedException($"Unknown delegate type: {obj.GetType()}");
-                            }
+                                ArrowGroupedMapWorkerFunction.ExecuteDelegate arrowFunctionDelegate =>
+                                     new ArrowGroupedMapWorkerFunction(arrowFunctionDelegate),
+                                ArrowCoGroupedMapWorkerFunction.ExecuteDelegate arrowCoGroupedFunctionDelegate =>
+                                     new ArrowCoGroupedMapWorkerFunction(arrowCoGroupedFunctionDelegate),
+                                DataFrameGroupedMapWorkerFunction.ExecuteDelegate dataFrameDelegate =>
+                                    new DataFrameGroupedMapWorkerFunction(dataFrameDelegate),
+
+                                _ => throw new NotSupportedException($"Unknown delegate type: {obj.GetType()}")
+                            };
                         }
                         else
                         {
@@ -230,6 +232,7 @@ namespace Microsoft.Spark.Worker.Processor
                 if (evalType == PythonEvalType.SQL_SCALAR_PANDAS_UDF ||
                     evalType == PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF ||
                     evalType == PythonEvalType.SQL_GROUPED_AGG_PANDAS_UDF ||
+                    evalType == PythonEvalType.SQL_COGROUPED_MAP_PANDAS_UDF ||
                     evalType == PythonEvalType.SQL_WINDOW_AGG_PANDAS_UDF)
                 {
                     int numConf = SerDe.ReadInt32(stream);
@@ -238,8 +241,8 @@ namespace Microsoft.Spark.Worker.Processor
                         // Currently this setting is not used.
                         // When Arrow supports timestamp type, "spark.sql.session.timeZone"
                         // can be retrieved from here.
-                        SerDe.ReadString(stream);
-                        SerDe.ReadString(stream);
+                        var key = SerDe.ReadString(stream);
+                        var value = SerDe.ReadString(stream);
                     }
                 }
 
