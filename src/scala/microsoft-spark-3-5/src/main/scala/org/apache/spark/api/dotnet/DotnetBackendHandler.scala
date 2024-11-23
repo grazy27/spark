@@ -108,13 +108,18 @@ class DotnetBackendHandler(server: DotnetBackend, objectsTracker: JVMObjectTrack
     bos.toByteArray
   }
 
-  override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
+  override def exceptionCaught(
+      ctx: ChannelHandlerContext,
+      cause: Throwable
+  ): Unit = {
     // Skip logging the exception message if the connection was disconnected from
     // the .NET side so that .NET side doesn't have to explicitly close the connection via
     // "stopBackend." Note that an exception is still thrown if the exit status is non-zero,
     // so skipping this kind of exception message does not affect the debugging.
-    if (!cause.getMessage.contains(
-          "An existing connection was forcibly closed by the remote host")) {
+    if (
+      !cause.getMessage.contains("An existing connection was forcibly closed by the remote host") && 
+      !cause.getMessage.contains("Connection reset")
+    ) {
       logError("Exception caught: ", cause)
     }
 
