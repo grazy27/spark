@@ -337,35 +337,79 @@ namespace Microsoft.Spark.E2ETest.IpcTests
             }
         }
 
-        private static RecordBatch ArrowBasedCountCharacters(RecordBatch records)
+
+        [Fact]
+        public void TestCoGroupedPandasMapUdf()
         {
-            StringArray nameColumn = records.Column("name") as StringArray;
+            DataFrame df2 = _spark
+                .Read()
+                .Schema("age INT, name STRING")
+                .Json($"{TestEnvironment.ResourceDirectory}more_people.json");
 
-            int characterCount = 0;
+            var res = _df
+                .GroupBy("age")
+                .CoGroup(df2.GroupBy("age"))
+                .Apply(
+                     new(
+                     [
+                        new StructField("age", new IntegerType()),
+                        new StructField("nameCharCount", new IntegerType())
+                     ]),
+                    (rb1, rb2) => ArrowBasedCountCharacters(rb1, rb2))
+                .Collect()
+                .ToArray();
 
-            for (int i = 0; i < nameColumn.Length; ++i)
+            Assert.Equal(3, res.Length);
+            foreach (Row row in res)
             {
-                string current = nameColumn.GetString(i);
-                characterCount += current.Length;
+                int? age = row.GetAs<int?>("age");
+                int charCount = row.GetAs<int>("nameCharCount");
+
+                var expected = age switch
+                {
+                    null => 14,
+                    19 => 17,
+                    30 => 12,
+                    _ => throw new Exception($"Unexpected age: {age}.")
+                };
+
+                Assert.Equal(expected, charCount);
+            }
+        }
+
+        private static RecordBatch ArrowBasedCountCharacters(params RecordBatch[] records)
+        {
+            List<string> names = new();
+            int? age = default;
+
+            foreach (var batch in records)
+            {
+                age ??= batch.Length > 0
+                    ? (batch.Column("age") as Int32Array).GetValue(0)
+                    : age;
+
+                for (var i = 0; i < batch.Length; i++)
+                {
+                    names.Add((batch.Column("name") as StringArray).GetString(i));
+                }
             }
 
-            int ageFieldIndex = records.Schema.GetFieldIndex("age");
-            Field ageField = records.Schema.GetFieldByIndex(ageFieldIndex);
+            var characterCount = names.Aggregate(0, (prev, str) => prev + str.Length);
 
-            // Return 1 record, if we were given any. 0, otherwise.
-            int returnLength = records.Length > 0 ? 1 : 0;
-
-            return new RecordBatch(
-                new Schema.Builder()
-                    .Field(ageField)
+            var schema = new Schema.Builder()
+                    .Field(f => f.Name("age").DataType(Int32Type.Default))
                     .Field(f => f.Name("name_CharCount").DataType(Int32Type.Default))
-                    .Build(),
-                new IArrowArray[]
-                {
-                    records.Column(ageFieldIndex),
-                    new Int32Array.Builder().Append(characterCount).Build()
-                },
-                returnLength);
+                    .Build();
+
+            return names.Any()
+                ? new(
+                    schema,
+                    [
+                        new Int32Array.Builder().Append(age).Build(),
+                        new Int32Array.Builder().Append(characterCount).Build()
+                    ],
+                    1)
+                : new(schema, [], 0);
         }
 
         [Fact]

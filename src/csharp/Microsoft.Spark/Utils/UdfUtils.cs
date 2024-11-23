@@ -76,7 +76,19 @@ namespace Microsoft.Spark.Utils
 
             SQL_SCALAR_PANDAS_ITER_UDF = 204,
             SQL_MAP_PANDAS_ITER_UDF = 205,
-            SQL_COGROUPED_MAP_PANDAS_UDF = 206
+            SQL_COGROUPED_MAP_PANDAS_UDF = 206,
+
+            // Newer types, not implemented in Dotnet.Spark:
+            SQL_ARROW_BATCHED_UDF = 101,
+            SQL_MAP_ARROW_ITER_UDF = 207,
+            SQL_GROUPED_MAP_PANDAS_UDF_WITH_STATE = 208,
+            SQL_GROUPED_MAP_ARROW_UDF = 209,
+            SQL_COGROUPED_MAP_ARROW_UDF = 210,
+            SQL_TRANSFORM_WITH_STATE_PANDAS_UDF = 211,
+
+            // https://docs.databricks.com/en/udf/python-udtf.html
+            SQL_TABLE_UDF = 300,
+            SQL_ARROW_TABLE_UDF = 301,
         }
 
         /// <summary>

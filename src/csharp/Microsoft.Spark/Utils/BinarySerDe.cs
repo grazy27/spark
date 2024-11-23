@@ -9,17 +9,19 @@ namespace Microsoft.Spark.Utils
 #pragma warning disable SYSLIB0011 // Type or member is deprecated as it's vulnerable to RCE.
         // TODO: Investigate how not to use typeless serialization
         [ThreadStatic]
-        private static BinaryFormatter _binaryFormatter = new();
+        private static BinaryFormatter _binaryFormatter;
+
+        private static BinaryFormatter Formatter => _binaryFormatter ??= new();
 #pragma warning restore SYSLIB0011 // Type or member is deprecated
 
         internal static T Deserialize<T>(Stream stream)
         {
-            return (T)_binaryFormatter.Deserialize(stream);
+            return (T)Formatter.Deserialize(stream);
         }
 
         internal static void Serialize<T>(Stream stream, T graph)
         {
-            _binaryFormatter.Serialize(stream, graph);
+            Formatter.Serialize(stream, graph);
         }
     }
 }

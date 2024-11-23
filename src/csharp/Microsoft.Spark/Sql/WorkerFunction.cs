@@ -102,6 +102,28 @@ namespace Microsoft.Spark.Sql
     }
 
     /// <summary>
+    /// Function for Co-grouped Map Vector UDFs using the Apache Arrow format.
+    /// </summary>
+    internal sealed class ArrowCoGroupedMapWorkerFunction : WorkerFunction
+    {
+        /// <summary>
+        /// A delegate to invoke a Grouped Map Vector UDF.
+        /// </summary>
+        /// <param name="inputDf1">First dataframe</param>
+        /// <param name="inputDf2">Second dataframe</param>
+        /// <returns>The resultant data frame.</returns>
+        internal delegate RecordBatch ExecuteDelegate(RecordBatch inputDf1, RecordBatch inputDf2);
+
+        internal ArrowCoGroupedMapWorkerFunction(ExecuteDelegate func)
+        {
+            Func = func;
+        }
+
+        internal ExecuteDelegate Func { get; }
+    }
+
+
+    /// <summary>
     /// Function that will be executed in the worker using the Python pickling format.
     /// </summary>
     internal sealed class PicklingWorkerFunction : WorkerFunction

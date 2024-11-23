@@ -130,7 +130,8 @@ namespace Microsoft.Spark.Worker
 
                         if (ConfigurationService.IsDatabricks)
                         {
-                            SerDe.ReadString(socket.InputStream);
+                            // "root"
+                            var str = SerDe.ReadString(socket.InputStream);
                         }
 
                         authStatus = Authenticator.AuthenticateAsServer(socket, secret);

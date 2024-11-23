@@ -21,13 +21,17 @@ namespace Microsoft.Spark.Worker
                 $"Args:[{string.Join(" ", args)}] " +
                 $"SparkVersion:[{sparkVersion}]");
 
-            if (args.Length != 2)
+            if (args.Length < 2)
             {
                 Console.Error.WriteLine($"Invalid number of args: {args.Length}");
                 Environment.Exit(-1);
             }
 
-            if ((args[0] == "-m") && (args[1] == "pyspark.worker"))
+            if (
+                // Local:
+                (args[0] == "-m") && (args[1] == "pyspark.worker")
+                // On databricks:
+                || args.Length > 5 && (args[4] == "-m") && (args[5] == "pyspark.worker"))
             {
                 new SimpleWorker(sparkVersion).Run();
             }
