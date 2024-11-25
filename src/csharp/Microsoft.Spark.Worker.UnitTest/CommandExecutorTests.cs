@@ -400,7 +400,6 @@ namespace Microsoft.Spark.Worker.UnitTest
 
         [Theory]
         [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
-
         public async Task TestArrowSqlCommandExecutorWithMultiCommands(
             Version sparkVersion,
             IpcOptions ipcOptions)
@@ -503,7 +502,6 @@ namespace Microsoft.Spark.Worker.UnitTest
 
         [Theory]
         [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
-
         public async Task TestDataFrameSqlCommandExecutorWithMultiCommands(
             Version sparkVersion,
             IpcOptions ipcOptions)
@@ -802,14 +800,14 @@ namespace Microsoft.Spark.Worker.UnitTest
                 .Build();
 
             var udfWrapper = new Sql.ArrowGroupedMapUdfWrapper(
-                (batch) => new RecordBatch(
+                (batches) => new RecordBatch(
                     resultSchema,
                     new IArrowArray[]
                     {
-                        ConvertStrings((StringArray)batch.Column(0)),
-                        ConvertInt64s((Int64Array)batch.Column(1)),
+                        ConvertStrings((StringArray)batches.First().Column(0)),
+                        ConvertInt64s((Int64Array)batches.First().Column(1)),
                     },
-                    batch.Length));
+                    batches.First().Length));
 
             var command = new SqlCommand()
             {
@@ -906,7 +904,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Theory]
+        [Theory] // DELETE ME
         [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
 
         public async Task TestDataFrameGroupedMapCommandExecutor(

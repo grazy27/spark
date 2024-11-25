@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using Microsoft.Spark.Sql;
@@ -57,8 +59,10 @@ namespace Microsoft.Spark.Examples.Sql.Batch
             spark.Stop();
         }
 
-        private static RecordBatch CountCharacters(RecordBatch records)
+        private static RecordBatch CountCharacters(IEnumerable<RecordBatch> betchRecords)
         {
+            var records = betchRecords.First();
+
             StringArray nameColumn = records.Column("name") as StringArray;
 
             int characterCount = 0;

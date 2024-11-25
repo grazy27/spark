@@ -190,7 +190,7 @@ namespace Microsoft.Spark.Sql
         /// </param>
         /// <param name="func">A grouped map user-defined function.</param>
         /// <returns>New DataFrame object with the UDF applied.</returns>
-        public DataFrame Apply(StructType returnType, Func<RecordBatch, RecordBatch> func)
+        public DataFrame Apply(StructType returnType, Func<IEnumerable<RecordBatch>, RecordBatch> func)
         {
             ArrowGroupedMapWorkerFunction.ExecuteDelegate wrapper =
                 new ArrowGroupedMapUdfWrapper(func).Execute;

@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
 using Apache.Arrow;
 
 namespace Microsoft.Spark.Sql
@@ -91,7 +92,7 @@ namespace Microsoft.Spark.Sql
         /// </summary>
         /// <param name="input">The input data frame.</param>
         /// <returns>The resultant data frame.</returns>
-        internal delegate RecordBatch ExecuteDelegate(RecordBatch input);
+        internal delegate RecordBatch ExecuteDelegate(IEnumerable<RecordBatch> input);
 
         internal ArrowGroupedMapWorkerFunction(ExecuteDelegate func)
         {

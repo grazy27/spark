@@ -311,7 +311,7 @@ namespace Microsoft.Spark.E2ETest.IpcTests
                         new StructField("age", new IntegerType()),
                         new StructField("nameCharCount", new IntegerType())
                     }),
-                    batch => ArrowBasedCountCharacters(batch))
+                    (IEnumerable<RecordBatch> batches) => ArrowBasedCountCharacters(batches.ToArray()))
                 .Collect()
                 .ToArray();
 

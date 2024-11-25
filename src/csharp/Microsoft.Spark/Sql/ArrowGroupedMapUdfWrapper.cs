@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
 using Apache.Arrow;
 
 namespace Microsoft.Spark.Sql
@@ -16,14 +17,14 @@ namespace Microsoft.Spark.Sql
     [UdfWrapper]
     internal sealed class ArrowGroupedMapUdfWrapper
     {
-        private readonly Func<RecordBatch, RecordBatch> _func;
+        private readonly Func<IEnumerable<RecordBatch>, RecordBatch> _func;
 
-        internal ArrowGroupedMapUdfWrapper(Func<RecordBatch, RecordBatch> func)
+        internal ArrowGroupedMapUdfWrapper(Func<IEnumerable<RecordBatch>, RecordBatch> func)
         {
             _func = func;
         }
 
-        internal RecordBatch Execute(RecordBatch input)
+        internal RecordBatch Execute(IEnumerable<RecordBatch> input)
         {
             return _func(input);
         }
