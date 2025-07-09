@@ -40,7 +40,7 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive.UnitTest
             };
             var probingPaths = new string[] { packageRootPath };
 
-            var mockSupportNugetWrapper = new Mock<SupportNugetWrapper>();
+            var mockSupportNugetWrapper = new Mock<ReferencedPackagesExtractor>(null);
             mockSupportNugetWrapper
                 .SetupGet(m => m.ResolvedPackageReferences)
                 .Returns(new ResolvedPackageReference[]

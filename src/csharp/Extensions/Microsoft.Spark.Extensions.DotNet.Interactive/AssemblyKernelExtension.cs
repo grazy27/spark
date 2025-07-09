@@ -4,13 +4,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.DotNet.Interactive;
 using Microsoft.DotNet.Interactive.Commands;
 using Microsoft.DotNet.Interactive.CSharp;
-using Microsoft.DotNet.Interactive.Utility;
+using Microsoft.DotNet.Interactive.Events;
 using Microsoft.Spark.Interop;
 using Microsoft.Spark.Sql;
 using Microsoft.Spark.Utils;
@@ -26,9 +29,10 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
     {
         private const string TempDirEnvVar = "DOTNET_SPARK_EXTENSION_INTERACTIVE_TMPDIR";
         private const string PreserveTempDirEnvVar = "DOTNET_SPARK_EXTENSION_INTERACTIVE_PRESERVE_TMPDIR";
+        private const string CsharpKernelName = "csharp";
 
-        private readonly PackageResolver _packageResolver =
-            new PackageResolver(new SupportNugetWrapper());
+        private ReferencedPackagesExtractor _referencedPackagesContainer;
+        private PackageResolver _packageResolver;
 
         /// <summary>
         /// Called by the Microsoft.DotNet.Interactive Assembly Extension Loader.
@@ -39,6 +43,11 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
         {
             if (kernel is CompositeKernel compositeKernel)
             {
+                var cSharpKernel = kernel.FindKernelByName(CsharpKernelName) as CSharpKernel;
+
+                _referencedPackagesContainer = new ReferencedPackagesExtractor(cSharpKernel);
+                _packageResolver = new PackageResolver(_referencedPackagesContainer);
+
                 Environment.SetEnvironmentVariable(Constants.RunningREPLEnvVar, "true");
 
                 var tempDir = new DirectoryInfo(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()));
@@ -46,29 +55,33 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
 
                 kernel.RegisterForDisposal(() =>
                 {
-                if (!EnvironmentUtils.GetEnvironmentVariableAsBool(PreserveTempDirEnvVar))
-                {
-                        tempDir.Delete(true);
-                }
-                });
-
-                compositeKernel.AddMiddleware(async (command, context, next) =>
-                {
-                    await next(command, context);
-
-                    if ((context.HandlingKernel is CSharpKernel kernel) &&
-                        (command is SubmitCode) &&
-                        TryGetSparkSession(out SparkSession sparkSession) &&
-                        TryEmitAssembly(kernel, tempDir.FullName, out string assemblyPath))
+                    if (!EnvironmentUtils.GetEnvironmentVariableAsBool(PreserveTempDirEnvVar))
                     {
-                        sparkSession.SparkContext.AddFile(assemblyPath);
-
-                        foreach (string filePath in GetPackageFiles(tempDir.FullName))
-                        {
-                            sparkSession.SparkContext.AddFile(filePath);
-                        }
+                        tempDir.Delete(true);
                     }
                 });
+
+                var subOnSucceeded = kernel
+                    .KernelEvents
+                    .OfType<CommandSucceeded>()
+                      .Subscribe(cmdSucceeded =>
+                      {
+                          if (
+                            cmdSucceeded.Command is SubmitCode command &&
+                            command.TargetKernelName == CsharpKernelName &&
+                            TryGetSparkSession(out SparkSession sparkSession) &&
+                            TryEmitAssembly(cSharpKernel, tempDir.FullName, out string assemblyPath))
+                          {
+                              sparkSession.SparkContext.AddFile(assemblyPath);
+
+                              foreach (string filePath in GetPackageFiles(tempDir.FullName))
+                              {
+                                  sparkSession.SparkContext.AddFile(filePath);
+                              }
+                          }
+                      });
+
+                kernel.RegisterForDisposal(subOnSucceeded);
             }
 
             return Task.CompletedTask;
@@ -109,11 +122,24 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
             throw new Exception(
                 $"TryEmitAssembly() unexpected duplicate assembly: ${assemblyPath}");
         }
-
+        /// <summary>
+        /// Uses <see cref="SparkSession.Active"/> to retrieve active or default session if one exists
+        /// </summary>
+        /// <param name="sparkSession">Out variable, that is set to active Spark Session if one found</param>
+        /// <returns>True if spark session is found, otherwise False.</returns>
         private bool TryGetSparkSession(out SparkSession sparkSession)
         {
-            sparkSession = SparkSession.GetActiveSession();
-            return sparkSession != null;
+            sparkSession = default;
+
+            try
+            {
+                sparkSession = SparkSession.Active();
+                return true;
+            }
+            catch (Exception ex) when (ex.InnerException is JvmException)
+            {
+                return false;
+            }
         }
 
         private IEnumerable<string> GetPackageFiles(string path)
